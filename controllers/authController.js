@@ -14,7 +14,7 @@ export const login = async (req, res) => {
 
   if (error) return res.status(401).json({ error: error.message });
 
-  res.json({
+  res.status(201).json({
     access_token: data.session.access_token,
     user: data.user,
   });
