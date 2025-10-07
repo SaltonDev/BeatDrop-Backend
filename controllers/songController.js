@@ -82,13 +82,41 @@ export const getRequests = async (req, res) => {
 
 // 🔴 Cleanup all requests (DJ only)
 export const cleanup = async (req, res) => {
-  const { data, error } = await supabase.from('song_requests').delete();
-  if (error) return res.status(500).json({ error: error.message });
+  try {
+    // Method 1: Using .neq() to match all rows
+    const { data, error } = await supabase
+      .from('song_requests')
+      .delete()
+      .neq('id', 0); // Matches all rows since no id equals 0
 
-  // Notify all DJs / clients that the list was cleared
-  if (req.app.locals.io) {
-    req.app.locals.io.emit('song_requests_update', { action: 'cleanup' });
+    // Method 2: Alternative using .gt() if you have auto-incrementing IDs
+    // const { data, error } = await supabase
+    //   .from('song_requests')
+    //   .delete()
+    //   .gt('id', 0);
+
+    if (error) {
+      console.error('Cleanup error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Notify all DJs / clients that the list was cleared
+    if (req.app.locals.io) {
+      req.app.locals.io.emit('song_requests_update', { 
+        eventType: 'DELETE',
+        action: 'cleanup',
+        message: 'All requests cleared'
+      });
+    }
+
+    console.log('Cleanup successful:', data);
+    res.json({ 
+      message: 'All song requests deleted.',
+      deletedCount: data?.length || 0
+    });
+
+  } catch (err) {
+    console.error('Cleanup exception:', err);
+    res.status(500).json({ error: 'Internal server error during cleanup' });
   }
-
-  res.json({ message: 'All song requests deleted.' });
 };
